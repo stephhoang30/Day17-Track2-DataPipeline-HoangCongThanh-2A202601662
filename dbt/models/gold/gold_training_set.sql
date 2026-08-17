@@ -24,9 +24,20 @@
 --   backfill một ngày không phải quét lại toàn bộ lịch sử. Giữ nguyên nó.
 -- ---------------------------------------------------------------------------
 
+-- Trả lời bốn câu hỏi ở trên:
+--   1. Grain là ENTITY (ticket), không phải sự kiện. Khoá tự nhiên: ticket_id.
+--   2. Không có unique_key -> dbt sinh ra `INSERT INTO ... SELECT ...` thuần.
+--      Chạy lại cùng một ngày là GHI THÊM, không thay thế -> 3 lượt = 3 bản.
+--   3. Ticket tạo D1 rồi sửa D2 đi qua WHERE hai lần trong MỘT lượt chạy
+--      (một lần ở partition D1, một lần ở partition D2) -> 'delete+insert'
+--      theo partition ngày cũng không gộp được hai lần đó về một hàng.
+--   4. => 'merge' theo khoá ticket_id: bản ghi mới THAY THẾ bản ghi cũ, bất kể
+--      hai lần ghi rơi vào hai partition ngày khác nhau.
 {{ config(
-    materialized     = 'incremental',
-    on_schema_change = 'fail'
+    materialized         = 'incremental',
+    unique_key           = 'ticket_id',
+    incremental_strategy = 'merge',
+    on_schema_change     = 'fail'
 ) }}
 
 select

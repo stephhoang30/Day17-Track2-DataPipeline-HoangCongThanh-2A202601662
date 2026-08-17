@@ -15,12 +15,11 @@ models:
     # đi qua, vì 99 đúng là integer. Miền giá trị là việc của test.
     # Cần cả hai.
     #
-    # Việc của bạn:
-    #   1. đổi enforced: false -> true
-    #   2. bỏ comment khối tests: ở cột priority bên dưới và điền `values`
+    # Đã bật cả hai lớp: contract giữ KIỂU (integer), test `accepted_values`
+    # ở cột priority bên dưới giữ MIỀN (1..4).
     config:
       contract:
-        enforced: false # <- TODO(nhiệm vụ 3): đổi thành true
+        enforced: true
 
     columns:
       - name: ticket_id
@@ -36,14 +35,13 @@ models:
       - name: priority
         data_type: integer
         description: "1 = urgent … 4 = low. Contract với team backend."
-        # TODO(nhiệm vụ 3): bỏ comment bốn dòng dưới và điền danh sách giá trị
-        # hợp lệ. `quote: false` vì đây là số, không phải chuỗi.
-        #
-        # tests:
-        #   - not_null
-        #   - accepted_values:
-        #       values: [...]
-        #       quote: false
+        # contract ràng buộc KIỂU (integer), test ràng buộc MIỀN GIÁ TRỊ.
+        # Thiếu test thì priority = 99 vẫn đi qua contract vì 99 là integer.
+        tests:
+          - not_null
+          - accepted_values:
+              values: [1, 2, 3, 4]
+              quote: false
       - name: category
         data_type: varchar
       - name: channel
@@ -68,6 +66,14 @@ models:
     description: >
       Bản ghi CDC bị contract từ chối. Grain: 1 hàng / 1 bản ghi CDC.
       Pipeline KHÔNG dừng khi gặp bản ghi lỗi — nó rơi vào đây.
+    columns:
+      - name: ticket_id
+        tests: [not_null]
+      - name: priority_raw
+        description: "Giá trị thô bị từ chối — giữ nguyên để người trực điều tra."
+      - name: reject_reason
+        description: "Vì sao bản ghi bị loại, đủ cụ thể để xử lý mà không cần mở lại Bronze."
+        tests: [not_null]
 
   # ---------------------------------------------------------------- events
   - name: silver_events

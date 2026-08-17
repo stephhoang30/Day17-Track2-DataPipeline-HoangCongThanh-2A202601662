@@ -29,9 +29,19 @@
 --   rõ hai vấn đề này tách nhau.
 -- ---------------------------------------------------------------------------
 
+-- Số đo trên bronze_events (129.462 bản ghi đã nạp):
+--   p50 = 0,13 ngày · p95 = 1,81 ngày · P99 = 2,73 ngày · max = 2,94 ngày
+--   5,05% bản ghi tới kho muộn hơn một ngày so với lúc sự kiện xảy ra.
+-- Phân bố có hai cụm rời nhau: 0–6 giờ (đường bình thường) và 43–71 giờ
+-- (đường về muộn). Lookback lấy theo P99 làm tròn lên = 3 ngày.
+--
+-- Grain gồm HAI cột (event_date, customer_id) nên unique_key là một list;
+-- 'merge' để lần tính sau THAY THẾ lần tính trước thay vì cộng dồn.
 {{ config(
-    materialized     = 'incremental',
-    on_schema_change = 'fail'
+    materialized         = 'incremental',
+    unique_key           = ['event_date', 'customer_id'],
+    incremental_strategy = 'merge',
+    on_schema_change     = 'fail'
 ) }}
 
 select
@@ -49,7 +59,13 @@ select
 from {{ ref('silver_events') }}
 
 {% if is_incremental() %}
-where event_date > (select max(event_date) from {{ this }})
+-- Lookback 3 ngày: mốc `max(event_date)` của bảng đích luôn chậm hơn ngày
+-- vận hành một ngày, nên cửa sổ này tính lại mọi event_date từ (ngày chạy − 4)
+-- trở đi — phủ trọn độ trễ tối đa quan sát được (2,94 ngày).
+where event_date >= (
+        select coalesce(max(event_date), DATE '1970-01-01') - interval 3 day
+        from {{ this }}
+    )
 {% endif %}
 
 group by 1, 2, 3, 4

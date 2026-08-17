@@ -5,13 +5,21 @@ models:
     description: "Tập huấn luyện cho mô hình phân loại ticket. Grain: 1 hàng / 1 ticket."
     columns:
       - name: ticket_id
-        description: "Khoá entity."
+        description: "Khoá entity — grain của bảng, nên phải unique."
+        tests: [unique, not_null]
+      - name: priority
+        tests:
+          - accepted_values:
+              values: [1, 2, 3, 4]
+              quote: false
 
   - name: gold_feature_daily
     description: "Đặc trưng theo ngày cho agent định tuyến. Grain: (event_date, customer_id)."
     columns:
       - name: event_date
+        tests: [not_null]
       - name: customer_id
+        tests: [not_null]
 
   - name: gold_doc_chunks
     description: "Chunk văn bản cho index RAG. Grain: 1 hàng / 1 chunk."
